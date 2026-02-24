@@ -48,6 +48,18 @@ class _TextFieldEditorState extends State<TextFieldEditor> {
   void initState() {
     super.initState();
     editorFocusNode = FocusNode(debugLabel: "Editor Focus Node");
+    if (widget.initialValue != null) {
+      controller.text = widget.initialValue!;
+    }
+  }
+
+  @override
+  void didUpdateWidget(TextFieldEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != oldWidget.initialValue &&
+        widget.initialValue != null) {
+      controller.text = widget.initialValue!;
+    }
   }
 
   @override
@@ -58,9 +70,6 @@ class _TextFieldEditorState extends State<TextFieldEditor> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.initialValue != null) {
-      controller.text = widget.initialValue!;
-    }
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.tab): () {
