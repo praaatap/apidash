@@ -1,0 +1,19 @@
+name: apidash_mcp
+description: "API Dash MCP Server - Expose API Dash capabilities via Model Context Protocol"
+version: 0.0.1
+homepage: https://github.com/foss42/apidash
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  dart_mcp: ^0.4.1
+  better_networking:
+    path: ../better_networking
+  seed:
+    path: ../seed
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.2
