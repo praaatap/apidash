@@ -1,0 +1,24 @@
+name: apidash_cli
+description: "API Dash CLI — Run API requests and execute cURL commands from the terminal."
+version: 0.0.1
+homepage: https://github.com/foss42/apidash
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+executables:
+  apidash: apidash_cli
+
+dependencies:
+  args: ^2.6.0
+  better_networking:
+    path: ../better_networking
+  seed:
+    path: ../seed
+  apidash_core:
+    path: ../apidash_core
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.2
