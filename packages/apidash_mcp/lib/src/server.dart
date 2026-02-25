@@ -1,62 +1,67 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:dart_mcp/server.dart';
 import 'package:better_networking/better_networking.dart';
 
-/// API Dash MCP Server
+/// MCP server that exposes API Dash HTTP capabilities as tools.
 ///
-/// Exposes API Dash's core HTTP capabilities via the
-/// Model Context Protocol (MCP), allowing AI agents to
-/// send requests, inspect responses, and generate cURL commands.
-class ApiDashMcpServer extends MCPServer with ToolsSupport {
-  ApiDashMcpServer()
-      : super(
-          implementation: ServerImplementation(
+/// Uses [ToolsSupport] to register three tools:
+/// - `send_request`: Send an HTTP request and return the response.
+/// - `inspect_response`: Inspect the response details.
+/// - `generate_curl`: Generate a cURL command from+96
+///  request params.
+final class ApiDashMcpServer extends MCPServer with ToolsSupport {
+  ApiDashMcpServer(
+    super.channel, {
+    super.protocolLogSink,
+  }) : super.fromStreamChannel(
+          implementation: Implementation(
             name: 'apidash-mcp',
             version: '0.0.1',
           ),
+          instructions:
+              'API Dash MCP Server exposes HTTP request capabilities. '
+              'Use the available tools to send requests, inspect responses, '
+              'and generate cURL commands.',
         );
 
   @override
-  void initialize() {
-    registerTool(sendRequestTool);
-    registerTool(inspectResponseTool);
-    registerTool(generateCurlTool);
+  FutureOr<InitializeResult> initialize(InitializeRequest request) async {
+    registerTool(_sendRequestTool, _handleSendRequest);
+    registerTool(_inspectResponseTool, _handleInspectResponse);
+    registerTool(_generateCurlTool, _handleGenerateCurl);
+
+    return super.initialize(request);
   }
 
-  // ---------------------------------------------------------------------------
-  // Tool: send_request
-  // ---------------------------------------------------------------------------
-  Tool get sendRequestTool => Tool(
-        name: 'send_request',
-        description:
-            'Send an HTTP request using API Dash and return the response. '
-            'Supports GET, POST, PUT, PATCH, DELETE, and HEAD methods.',
-        inputSchema: ObjectSchema(
-          properties: {
-            'url': Schema.string(description: 'Target URL (required)'),
-            'method': Schema.string(
-              description:
-                  'HTTP method – GET, POST, PUT, PATCH, DELETE, HEAD. Default: GET',
-            ),
-            'headers': Schema.string(
-              description:
-                  'Request headers as a JSON object string, e.g. {"Authorization":"Bearer token"}',
-            ),
-            'body': Schema.string(
-              description: 'Request body string (for POST/PUT/PATCH)',
-            ),
-          },
-          required: ['url'],
-        ),
-      );
+  // -- send_request ----------------------------------------------------------
 
-  Future<CallToolResult> handleSendRequest(
-      Map<String, Object?> arguments) async {
-    final url = arguments['url'] as String;
-    final method = _parseMethod(arguments['method'] as String? ?? 'GET');
-    final headers = _parseHeaders(arguments['headers'] as String?);
-    final body = arguments['body'] as String?;
+  static final _sendRequestTool = Tool(
+    name: 'send_request',
+    description: 'Send an HTTP request using API Dash and return the response.',
+    inputSchema: ObjectSchema(
+      properties: {
+        'url': Schema.string(description: 'Target URL'),
+        'method': Schema.string(
+          description: 'HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD). '
+              'Defaults to GET.',
+        ),
+        'headers': Schema.string(
+          description: 'Request headers as a JSON object string.',
+        ),
+        'body': Schema.string(description: 'Request body string.'),
+      },
+      required: ['url'],
+    ),
+  );
+
+  Future<CallToolResult> _handleSendRequest(CallToolRequest request) async {
+    final args = request.arguments ?? {};
+    final url = args['url'] as String;
+    final method = _parseMethod(args['method'] as String?);
+    final headers = _parseHeaders(args['headers'] as String?);
+    final body = args['body'] as String?;
 
     final requestModel = HttpRequestModel(
       url: url,
@@ -65,69 +70,58 @@ class ApiDashMcpServer extends MCPServer with ToolsSupport {
       body: body,
     );
 
-    try {
-      final (response, duration, error) = await sendHttpRequest(
-        'mcp-${DateTime.now().millisecondsSinceEpoch}',
-        APIType.rest,
-        requestModel,
-      );
+    final (response, duration, error) = await sendHttpRequest(
+      'mcp-${DateTime.now().millisecondsSinceEpoch}',
+      APIType.rest,
+      requestModel,
+    );
 
-      if (error != null) {
-        return CallToolResult(
-          content: [TextContent(text: 'Error: $error')],
-          isError: true,
-        );
-      }
-
-      final result = {
-        'status_code': response?.statusCode,
-        'headers': response?.headers,
-        'body': response?.body,
-        'elapsed_ms': duration?.inMilliseconds,
-      };
-
+    if (error != null) {
       return CallToolResult(
-        content: [TextContent(text: jsonEncode(result))],
-      );
-    } catch (e) {
-      return CallToolResult(
-        content: [TextContent(text: 'Error: $e')],
+        content: [TextContent(text: 'Error: $error')],
         isError: true,
       );
     }
+
+    final result = {
+      'status_code': response?.statusCode,
+      'headers': response?.headers,
+      'body': response?.body,
+      'elapsed_ms': duration?.inMilliseconds,
+    };
+
+    return CallToolResult(
+      content: [TextContent(text: jsonEncode(result))],
+    );
   }
 
-  // ---------------------------------------------------------------------------
-  // Tool: inspect_response
-  // ---------------------------------------------------------------------------
-  Tool get inspectResponseTool => Tool(
-        name: 'inspect_response',
-        description:
-            'Send an HTTP request and deeply inspect the response. '
-            'Returns status, content type, size, headers, and a body preview.',
-        inputSchema: ObjectSchema(
-          properties: {
-            'url': Schema.string(description: 'Target URL (required)'),
-            'method': Schema.string(
-              description: 'HTTP method. Default: GET',
-            ),
-            'headers': Schema.string(
-              description: 'Request headers as a JSON object string',
-            ),
-            'body': Schema.string(
-              description: 'Request body string',
-            ),
-          },
-          required: ['url'],
-        ),
-      );
+  // -- inspect_response ------------------------------------------------------
 
-  Future<CallToolResult> handleInspectResponse(
-      Map<String, Object?> arguments) async {
-    final url = arguments['url'] as String;
-    final method = _parseMethod(arguments['method'] as String? ?? 'GET');
-    final headers = _parseHeaders(arguments['headers'] as String?);
-    final body = arguments['body'] as String?;
+  static final _inspectResponseTool = Tool(
+    name: 'inspect_response',
+    description: 'Send a request and inspect the response details including '
+        'content type, size, headers, and body preview.',
+    inputSchema: ObjectSchema(
+      properties: {
+        'url': Schema.string(description: 'Target URL'),
+        'method': Schema.string(description: 'HTTP method. Defaults to GET.'),
+        'headers': Schema.string(
+          description: 'Request headers as a JSON object string.',
+        ),
+        'body': Schema.string(description: 'Request body string.'),
+      },
+      required: ['url'],
+    ),
+  );
+
+  Future<CallToolResult> _handleInspectResponse(
+    CallToolRequest request,
+  ) async {
+    final args = request.arguments ?? {};
+    final url = args['url'] as String;
+    final method = _parseMethod(args['method'] as String?);
+    final headers = _parseHeaders(args['headers'] as String?);
+    final body = args['body'] as String?;
 
     final requestModel = HttpRequestModel(
       url: url,
@@ -136,93 +130,79 @@ class ApiDashMcpServer extends MCPServer with ToolsSupport {
       body: body,
     );
 
-    try {
-      final (response, duration, error) = await sendHttpRequest(
-        'mcp-inspect-${DateTime.now().millisecondsSinceEpoch}',
-        APIType.rest,
-        requestModel,
-      );
+    final (response, duration, error) = await sendHttpRequest(
+      'mcp-inspect-${DateTime.now().millisecondsSinceEpoch}',
+      APIType.rest,
+      requestModel,
+    );
 
-      if (error != null) {
-        return CallToolResult(
-          content: [TextContent(text: 'Error: $error')],
-          isError: true,
-        );
-      }
-
-      final responseBody = response?.body ?? '';
-      final bodyPreview = responseBody.length > 500
-          ? '${responseBody.substring(0, 500)}...'
-          : responseBody;
-
-      final result = {
-        'status_code': response?.statusCode,
-        'content_type': response?.headers['content-type'],
-        'response_size_bytes': responseBody.length,
-        'elapsed_ms': duration?.inMilliseconds,
-        'headers': response?.headers,
-        'body_preview': bodyPreview,
-      };
-
+    if (error != null) {
       return CallToolResult(
-        content: [TextContent(text: jsonEncode(result))],
-      );
-    } catch (e) {
-      return CallToolResult(
-        content: [TextContent(text: 'Error: $e')],
+        content: [TextContent(text: 'Error: $error')],
         isError: true,
       );
     }
+
+    final responseBody = response?.body ?? '';
+    final bodyPreview = responseBody.length > 500
+        ? '${responseBody.substring(0, 500)}...'
+        : responseBody;
+
+    final result = {
+      'status_code': response?.statusCode,
+      'content_type': response?.headers['content-type'],
+      'response_size_bytes': responseBody.length,
+      'elapsed_ms': duration?.inMilliseconds,
+      'headers': response?.headers,
+      'body_preview': bodyPreview,
+    };
+
+    return CallToolResult(
+      content: [TextContent(text: jsonEncode(result))],
+    );
   }
 
-  // ---------------------------------------------------------------------------
-  // Tool: generate_curl
-  // ---------------------------------------------------------------------------
-  Tool get generateCurlTool => Tool(
-        name: 'generate_curl',
-        description:
-            'Generate a cURL command for the given HTTP request parameters.',
-        inputSchema: ObjectSchema(
-          properties: {
-            'url': Schema.string(description: 'Target URL (required)'),
-            'method': Schema.string(
-              description: 'HTTP method. Default: GET',
-            ),
-            'headers': Schema.string(
-              description: 'Request headers as a JSON object string',
-            ),
-            'body': Schema.string(
-              description: 'Request body string',
-            ),
-          },
-          required: ['url'],
+  // -- generate_curl ---------------------------------------------------------
+
+  static final _generateCurlTool = Tool(
+    name: 'generate_curl',
+    description: 'Generate a cURL command for the given request parameters.',
+    inputSchema: ObjectSchema(
+      properties: {
+        'url': Schema.string(description: 'Target URL'),
+        'method': Schema.string(description: 'HTTP method. Defaults to GET.'),
+        'headers': Schema.string(
+          description: 'Request headers as a JSON object string.',
         ),
-      );
+        'body': Schema.string(description: 'Request body string.'),
+      },
+      required: ['url'],
+    ),
+  );
 
-  Future<CallToolResult> handleGenerateCurl(
-      Map<String, Object?> arguments) async {
-    final url = arguments['url'] as String;
-    final method = (arguments['method'] as String? ?? 'GET').toUpperCase();
-    final headersStr = arguments['headers'] as String?;
-    final body = arguments['body'] as String?;
+  Future<CallToolResult> _handleGenerateCurl(CallToolRequest request) async {
+    final args = request.arguments ?? {};
+    final url = args['url'] as String;
+    final method = (args['method'] as String? ?? 'GET').toUpperCase();
+    final headersStr = args['headers'] as String?;
+    final body = args['body'] as String?;
 
-    final buffer = StringBuffer();
-    buffer.write("curl -X $method '$url'");
+    final buffer = StringBuffer("curl -X $method '$url'");
 
     if (headersStr != null && headersStr.isNotEmpty) {
       try {
-        final Map<String, dynamic> parsed = jsonDecode(headersStr);
+        final parsed = jsonDecode(headersStr) as Map<String, dynamic>;
         for (final entry in parsed.entries) {
           buffer.write(" -H '${entry.key}: ${entry.value}'");
         }
       } catch (_) {
-        // If headers can't be parsed, skip them
+        // Skip malformed headers
       }
     }
 
     if (body != null && body.isNotEmpty) {
-      final escapedBody = body.replaceAll("'", "'\\''");
-      buffer.write(" -d '$escapedBody'");
+      final escaped = body.replaceAll("'", "'\\''");
+      buffer.write(" -d '$escaped'");
     }
 
     return CallToolResult(
@@ -230,33 +210,10 @@ class ApiDashMcpServer extends MCPServer with ToolsSupport {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Tool dispatch
-  // ---------------------------------------------------------------------------
-  @override
-  Future<CallToolResult> callTool(CallToolRequest request) async {
-    switch (request.params.name) {
-      case 'send_request':
-        return handleSendRequest(request.params.arguments ?? {});
-      case 'inspect_response':
-        return handleInspectResponse(request.params.arguments ?? {});
-      case 'generate_curl':
-        return handleGenerateCurl(request.params.arguments ?? {});
-      default:
-        return CallToolResult(
-          content: [TextContent(text: 'Unknown tool: ${request.params.name}')],
-          isError: true,
-        );
-    }
-  }
+  // -- Helpers ---------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-  HTTPVerb _parseMethod(String method) {
-    switch (method.toUpperCase()) {
-      case 'GET':
-        return HTTPVerb.get;
+  static HTTPVerb _parseMethod(String? method) {
+    switch (method?.toUpperCase()) {
       case 'POST':
         return HTTPVerb.post;
       case 'PUT':
@@ -274,10 +231,10 @@ class ApiDashMcpServer extends MCPServer with ToolsSupport {
     }
   }
 
-  List<NameValueModel>? _parseHeaders(String? headersJson) {
+  static List<NameValueModel>? _parseHeaders(String? headersJson) {
     if (headersJson == null || headersJson.isEmpty) return null;
     try {
-      final Map<String, dynamic> parsed = jsonDecode(headersJson);
+      final parsed = jsonDecode(headersJson) as Map<String, dynamic>;
       return parsed.entries
           .map((e) => NameValueModel(name: e.key, value: e.value.toString()))
           .toList();
