@@ -1,6 +1,7 @@
 import 'package:apidash_core/apidash_core.dart';
 import 'package:apidash_design_system/apidash_design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:genai/consts.dart';
 import 'ai_model_selector_dialog.dart';
 
 class AIModelSelectorButton extends StatelessWidget {
@@ -20,6 +21,24 @@ class AIModelSelectorButton extends StatelessWidget {
     this.onDialogOpen,
     this.onDialogClose,
   });
+
+  String _getModelName(AIRequestModel? requestModel) {
+    if (requestModel == null || requestModel.model == null) {
+      return 'Select Model';
+    }
+    final provider = requestModel.modelApiProvider;
+    if (provider == null) return requestModel.model!;
+
+    final providerModels = kAvailableModels.map[provider]?.models;
+    if (providerModels == null) return requestModel.model!;
+
+    for (final m in providerModels) {
+      if (m.id == requestModel.model) {
+        return m.name ?? requestModel.model!;
+      }
+    }
+    return requestModel.model!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +64,10 @@ class AIModelSelectorButton extends StatelessWidget {
               if (newAIRequestModel == null) return;
               onModelUpdated?.call(newAIRequestModel);
             },
-      child: Text(aiRequestModel?.model ?? 'Select Model'),
+      child: Text(
+        _getModelName(aiRequestModel),
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
