@@ -1,3 +1,4 @@
+import 'package:apidash_core/apidash_core.dart';
 import 'package:apidash_design_system/apidash_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -156,9 +157,10 @@ class _RequestListState extends ConsumerState<RequestList> {
               controller: controller,
               children: requestSequence.map((id) {
                 var item = requestItems[id]!;
-                if (item.httpRequestModel!.url
-                        .toLowerCase()
-                        .contains(filterQuery) ||
+                final url = (item.apiType == APIType.ai)
+                    ? item.aiRequestModel?.url ?? ''
+                    : item.httpRequestModel?.url ?? '';
+                if (url.toLowerCase().contains(filterQuery) ||
                     item.name.toLowerCase().contains(filterQuery)) {
                   return Padding(
                     padding: kP1,
