@@ -42,7 +42,9 @@ A List of API endpoints that can be used for testing API Dash
 
 #### Audio
 
-- 
+- https://freesound.org/data/previews/337/337049_3232293-hq.mp3
+- https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav
+- https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg
 
 ## SSE
 
