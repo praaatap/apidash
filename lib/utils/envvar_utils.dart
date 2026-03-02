@@ -325,3 +325,15 @@ EnvironmentVariableSuggestion getVariableStatus(
     value: input.substring(eqIndex + 1).trim(),
   );
 }
+
+/// Parses multi-line `KEY=VALUE` text (e.g. pasted from a `.env` file).
+/// Returns a list of parsed (key, value) records, skipping blank lines
+/// and lines without `=`.
+List<({String key, String value})> parseEnvLines(String input) {
+  final lines = input.split(RegExp(r'[\r\n]+'));
+  if (lines.length <= 1) return [];
+  return lines
+      .map((line) => parseEnvLine(line))
+      .whereType<({String key, String value})>()
+      .toList();
+}

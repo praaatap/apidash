@@ -496,4 +496,34 @@ void main() {
       expect(parseEnvLine(""), isNull);
     });
   });
+
+  group("Testing parseEnvLines function", () {
+    test("Parses multiple KEY=VALUE lines", () {
+      final result =
+          parseEnvLines("API_KEY=abc123\nDB_HOST=localhost\nDB_PORT=5432");
+      expect(result.length, 3);
+      expect(result[0].key, "API_KEY");
+      expect(result[0].value, "abc123");
+      expect(result[1].key, "DB_HOST");
+      expect(result[1].value, "localhost");
+      expect(result[2].key, "DB_PORT");
+      expect(result[2].value, "5432");
+    });
+
+    test("Returns empty list for single-line input", () {
+      expect(parseEnvLines("API_KEY=abc123"), isEmpty);
+    });
+
+    test("Skips blank lines", () {
+      final result = parseEnvLines("A=1\n\nB=2\n\n");
+      expect(result.length, 2);
+      expect(result[0].key, "A");
+      expect(result[1].key, "B");
+    });
+
+    test("Skips lines without =", () {
+      final result = parseEnvLines("A=1\njust_a_comment\nB=2");
+      expect(result.length, 2);
+    });
+  });
 }

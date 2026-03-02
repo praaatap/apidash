@@ -106,6 +106,36 @@ class EditEnvironmentVariablesState
                 initialValue: variableRows[index].key,
                 hintText: "Add Variable",
                 onChanged: (value) {
+                  // Multi-line paste (e.g. from .env file)
+                  final multiParsed = parseEnvLines(value);
+                  if (multiParsed.isNotEmpty) {
+                    // Replace current row with first parsed line
+                    variableRows[index] = variableRows[index].copyWith(
+                      key: multiParsed.first.key,
+                      value: multiParsed.first.value,
+                      enabled: true,
+                    );
+                    // Insert remaining parsed lines after current row
+                    for (var i = 1; i < multiParsed.length; i++) {
+                      variableRows.insert(
+                        index + i,
+                        EnvironmentVariableModel(
+                          key: multiParsed[i].key,
+                          value: multiParsed[i].value,
+                          enabled: true,
+                        ),
+                      );
+                    }
+                    // Ensure trailing empty row exists
+                    if (variableRows.last != kEnvironmentVariableEmptyModel) {
+                      variableRows.add(kEnvironmentVariableEmptyModel);
+                    }
+                    seed = random.nextInt(kRandMax);
+                    _onFieldChange(selectedId!);
+                    return;
+                  }
+
+                  // Single-line paste or normal typing
                   final parsed = parseEnvLine(value);
                   final key = parsed?.key ?? value;
                   final val = parsed?.value;
@@ -113,12 +143,15 @@ class EditEnvironmentVariablesState
                   if (isLast && !isAddingRow) {
                     isAddingRow = true;
                     variableRows[index] = variableRows[index].copyWith(
-                      key: key, value: val ?? '', enabled: true,
+                      key: key,
+                      value: val ?? '',
+                      enabled: true,
                     );
                     variableRows.add(kEnvironmentVariableEmptyModel);
                   } else {
                     variableRows[index] = variableRows[index].copyWith(
-                      key: key, value: val ?? variableRows[index].value,
+                      key: key,
+                      value: val ?? variableRows[index].value,
                     );
                   }
                   if (parsed != null) seed = random.nextInt(kRandMax);
