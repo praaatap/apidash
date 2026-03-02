@@ -39,6 +39,30 @@ class EditEnvironmentVariablesState
     );
   }
 
+  void _updateRow(
+    int index,
+    String selectedId,
+    bool isLast, {
+    String? key,
+    String? value,
+  }) {
+    if (isLast && !isAddingRow) {
+      isAddingRow = true;
+      variableRows[index] = variableRows[index].copyWith(
+        key: key ?? variableRows[index].key,
+        value: value ?? variableRows[index].value,
+        enabled: true,
+      );
+      variableRows.add(kEnvironmentVariableEmptyModel);
+    } else {
+      variableRows[index] = variableRows[index].copyWith(
+        key: key ?? variableRows[index].key,
+        value: value ?? variableRows[index].value,
+      );
+    }
+    _onFieldChange(selectedId);
+  }
+
   @override
   Widget build(BuildContext context) {
     dataTableShowLogs = false;
@@ -109,13 +133,11 @@ class EditEnvironmentVariablesState
                   // Multi-line paste (e.g. from .env file)
                   final multiParsed = parseEnvLines(value);
                   if (multiParsed.isNotEmpty) {
-                    // Replace current row with first parsed line
                     variableRows[index] = variableRows[index].copyWith(
                       key: multiParsed.first.key,
                       value: multiParsed.first.value,
                       enabled: true,
                     );
-                    // Insert remaining parsed lines after current row
                     for (var i = 1; i < multiParsed.length; i++) {
                       variableRows.insert(
                         index + i,
@@ -126,7 +148,6 @@ class EditEnvironmentVariablesState
                         ),
                       );
                     }
-                    // Ensure trailing empty row exists
                     if (variableRows.last != kEnvironmentVariableEmptyModel) {
                       variableRows.add(kEnvironmentVariableEmptyModel);
                     }
@@ -134,28 +155,10 @@ class EditEnvironmentVariablesState
                     _onFieldChange(selectedId!);
                     return;
                   }
-
-                  // Single-line paste or normal typing
                   final parsed = parseEnvLine(value);
-                  final key = parsed?.key ?? value;
-                  final val = parsed?.value;
-
-                  if (isLast && !isAddingRow) {
-                    isAddingRow = true;
-                    variableRows[index] = variableRows[index].copyWith(
-                      key: key,
-                      value: val ?? '',
-                      enabled: true,
-                    );
-                    variableRows.add(kEnvironmentVariableEmptyModel);
-                  } else {
-                    variableRows[index] = variableRows[index].copyWith(
-                      key: key,
-                      value: val ?? variableRows[index].value,
-                    );
-                  }
+                  _updateRow(index, selectedId!, isLast,
+                      key: parsed?.key ?? value, value: parsed?.value);
                   if (parsed != null) seed = random.nextInt(kRandMax);
-                  _onFieldChange(selectedId!);
                 },
                 colorScheme: Theme.of(context).colorScheme,
               ),
@@ -175,25 +178,9 @@ class EditEnvironmentVariablesState
                 hintText: kHintAddValue,
                 onChanged: (value) {
                   final parsed = parseEnvLine(value);
-                  final newKey = parsed?.key;
-                  final newVal = parsed?.value ?? value;
-
-                  if (isLast && !isAddingRow) {
-                    isAddingRow = true;
-                    variableRows[index] = variableRows[index].copyWith(
-                      key: newKey ?? variableRows[index].key,
-                      value: newVal,
-                      enabled: true,
-                    );
-                    variableRows.add(kEnvironmentVariableEmptyModel);
-                  } else {
-                    variableRows[index] = variableRows[index].copyWith(
-                      key: newKey ?? variableRows[index].key,
-                      value: newVal,
-                    );
-                  }
+                  _updateRow(index, selectedId!, isLast,
+                      key: parsed?.key, value: parsed?.value ?? value);
                   if (parsed != null) seed = random.nextInt(kRandMax);
-                  _onFieldChange(selectedId!);
                 },
                 colorScheme: Theme.of(context).colorScheme,
               ),
