@@ -106,15 +106,22 @@ class EditEnvironmentVariablesState
                 initialValue: variableRows[index].key,
                 hintText: "Add Variable",
                 onChanged: (value) {
+                  final parsed = parseEnvLine(value);
+                  final key = parsed?.key ?? value;
+                  final val = parsed?.value;
+
                   if (isLast && !isAddingRow) {
                     isAddingRow = true;
-                    variableRows[index] =
-                        variableRows[index].copyWith(key: value, enabled: true);
+                    variableRows[index] = variableRows[index].copyWith(
+                      key: key, value: val ?? '', enabled: true,
+                    );
                     variableRows.add(kEnvironmentVariableEmptyModel);
                   } else {
-                    variableRows[index] =
-                        variableRows[index].copyWith(key: value);
+                    variableRows[index] = variableRows[index].copyWith(
+                      key: key, value: val ?? variableRows[index].value,
+                    );
                   }
+                  if (parsed != null) seed = random.nextInt(kRandMax);
                   _onFieldChange(selectedId!);
                 },
                 colorScheme: Theme.of(context).colorScheme,

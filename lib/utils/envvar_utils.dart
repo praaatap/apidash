@@ -315,3 +315,13 @@ EnvironmentVariableSuggestion getVariableStatus(
       variable: EnvironmentVariableModel(
           key: key, type: EnvironmentVariableType.variable, value: "unknown"));
 }
+
+/// Parse `KEY=VALUE` string into a (key, value).
+({String key, String value})? parseEnvLine(String input) {
+  final eqIndex = input.indexOf('=');
+  if (eqIndex < 0) return null;
+  return (
+    key: input.substring(0, eqIndex).trim(),
+    value: input.substring(eqIndex + 1).trim(),
+  );
+}

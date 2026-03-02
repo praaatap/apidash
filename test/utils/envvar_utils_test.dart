@@ -451,4 +451,49 @@ void main() {
       expect(result.authModel?.apikey?.name, "X-API-Key");
     });
   });
+
+  group("Testing parseEnvLine function", () {
+    test("Parses basic KEY=VALUE", () {
+      final result = parseEnvLine("GOOGLE_API_KEY=your_google_key");
+      expect(result, isNotNull);
+      expect(result!.key, "GOOGLE_API_KEY");
+      expect(result.value, "your_google_key");
+    });
+
+    test("Splits on first = only (value contains =)", () {
+      final result = parseEnvLine("TOKEN=abc=def=ghi");
+      expect(result, isNotNull);
+      expect(result!.key, "TOKEN");
+      expect(result.value, "abc=def=ghi");
+    });
+
+    test("Returns null when no = is present", () {
+      expect(parseEnvLine("MY_VAR"), isNull);
+    });
+
+    test("Handles empty key", () {
+      final result = parseEnvLine("=some_value");
+      expect(result, isNotNull);
+      expect(result!.key, "");
+      expect(result.value, "some_value");
+    });
+
+    test("Handles empty value", () {
+      final result = parseEnvLine("MY_KEY=");
+      expect(result, isNotNull);
+      expect(result!.key, "MY_KEY");
+      expect(result.value, "");
+    });
+
+    test("Trims whitespace from key and value", () {
+      final result = parseEnvLine("  MY_KEY  =  my_value  ");
+      expect(result, isNotNull);
+      expect(result!.key, "MY_KEY");
+      expect(result.value, "my_value");
+    });
+
+    test("Returns null for empty string", () {
+      expect(parseEnvLine(""), isNull);
+    });
+  });
 }
