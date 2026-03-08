@@ -133,28 +133,19 @@ class EditEnvironmentVariablesState
                   // Multi-line paste (e.g. from .env file)
                   final multiParsed = parseEnvLines(value);
                   if (multiParsed.isNotEmpty) {
-                    variableRows[index] = variableRows[index].copyWith(
-                      key: multiParsed.first.key,
-                      value: multiParsed.first.value,
-                      enabled: true,
-                    );
+                    variableRows[index] = multiParsed.first;
                     for (var i = 1; i < multiParsed.length; i++) {
-                      variableRows.insert(
-                        index + i,
-                        EnvironmentVariableModel(
-                          key: multiParsed[i].key,
-                          value: multiParsed[i].value,
-                          enabled: true,
-                        ),
-                      );
+                      variableRows.insert(index + i, multiParsed[i]);
                     }
                     if (variableRows.last != kEnvironmentVariableEmptyModel) {
                       variableRows.add(kEnvironmentVariableEmptyModel);
                     }
                     seed = random.nextInt(kRandMax);
                     _onFieldChange(selectedId!);
+                    setState(() {});
                     return;
                   }
+
                   final parsed = parseEnvLine(value);
                   _updateRow(index, selectedId!, isLast,
                       key: parsed?.key ?? value, value: parsed?.value);

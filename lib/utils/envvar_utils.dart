@@ -316,25 +316,47 @@ EnvironmentVariableSuggestion getVariableStatus(
           key: key, type: EnvironmentVariableType.variable, value: "unknown"));
 }
 
-/// Parse `KEY=VALUE` string into a (key, value).
-({String key, String value})? parseEnvLine(String input) {
-  final eqIndex = input.indexOf('=');
+/// Parse `KEY=VALUE` string into EnvironmentVariableModel.
+EnvironmentVariableModel? parseEnvLine(String input) {
+  var trimmed = input.trim();
+
+  // Skip empty lines and comments
+  if (trimmed.isEmpty || trimmed.startsWith('#')) return null;
+
+  // Strip optional 'export ' prefix
+  if (trimmed.startsWith('export ')) trimmed = trimmed.substring(7).trim();
+
+  final eqIndex = trimmed.indexOf('=');
   if (eqIndex < 0) return null;
-  return (
-    key: input.substring(0, eqIndex).trim(),
-    value: input.substring(eqIndex + 1).trim(),
+
+  final key = trimmed.substring(0, eqIndex).trim();
+  if (key.isEmpty) return null;
+
+  var value = trimmed.substring(eqIndex + 1).trim();
+
+  // Strip surrounding quotes
+  if (value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+       (value.startsWith("'") && value.endsWith("'")))) {
+    value = value.substring(1, value.length - 1);
+  }
+
+  return EnvironmentVariableModel(
+    key: key,
+    value: value,
+    type: EnvironmentVariableType.variable,
+    enabled: true,
   );
 }
 
-/// Parses multi-line `KEY=VALUE` text (e.g. pasted from a `.env` file).
+
+/// Parses multi-line `KEY=VALUE` text Data cell inputs
 /// Returns a list of parsed (key, value) records, skipping blank lines
 /// and lines without `=`.
-List<({String key, String value})> parseEnvLines(String input) {
+List<EnvironmentVariableModel> parseEnvLines(String input) {
   final lines = input.split(RegExp(r'[\r\n]+'));
-  if (lines.length <= 1) return [];
- return lines
-    .where((line) => line.trim().isNotEmpty && !line.trim().startsWith('#'))
-    .map((line) => parseEnvLine(line))
-    .whereType<({String key, String value})>()
-    .toList();
+  return lines
+      .map((line) => parseEnvLine(line))
+      .whereType<EnvironmentVariableModel>()
+      .toList();
 }
