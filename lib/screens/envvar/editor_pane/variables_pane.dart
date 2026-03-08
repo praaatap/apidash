@@ -106,6 +106,26 @@ class EditEnvironmentVariablesState
                 initialValue: variableRows[index].key,
                 hintText: "Add Variable",
                 onChanged: (value) {
+                  // Auto-detect multi-line .env paste
+                  if (looksLikeEnvContent(value)) {
+                    final parsed = parseEnvContent(value);
+                    if (parsed.isNotEmpty) {
+                      seed = random.nextInt(kRandMax);
+                      // Remove the current empty row if it's the last one
+                      if (isLast) {
+                        variableRows.removeAt(index);
+                      }
+                      // Insert parsed env vars at the current position
+                      variableRows.insertAll(index, parsed);
+                      // Ensure there's always an empty row at the end
+                      if (variableRows.last != kEnvironmentVariableEmptyModel) {
+                        variableRows.add(kEnvironmentVariableEmptyModel);
+                      }
+                      _onFieldChange(selectedId!);
+                      setState(() {});
+                      return;
+                    }
+                  }
                   if (isLast && !isAddingRow) {
                     isAddingRow = true;
                     variableRows[index] =
@@ -134,14 +154,40 @@ class EditEnvironmentVariablesState
                 initialValue: variableRows[index].value,
                 hintText: kHintAddValue,
                 onChanged: (value) {
+                  // Auto-detect multi-line .env paste in value field
+                  if (looksLikeEnvContent(value)) {
+                    final parsed = parseEnvContent(value);
+                    if (parsed.isNotEmpty) {
+                      seed = random.nextInt(kRandMax);
+                      if (isLast) {
+                        variableRows.removeAt(index);
+                      }
+                      variableRows.insertAll(index, parsed);
+                      if (variableRows.last != kEnvironmentVariableEmptyModel) {
+                        variableRows.add(kEnvironmentVariableEmptyModel);
+                      }
+                      _onFieldChange(selectedId!);
+                      setState(() {});
+                      return;
+                    }
+                  }
+                  // Auto-strip surrounding quotes from value
+                  var cleanValue = value;
+                  if (cleanValue.length >= 2 &&
+                      ((cleanValue.startsWith('"') &&
+                              cleanValue.endsWith('"')) ||
+                          (cleanValue.startsWith("'") &&
+                              cleanValue.endsWith("'")))) {
+                    cleanValue = cleanValue.substring(1, cleanValue.length - 1);
+                  }
                   if (isLast && !isAddingRow) {
                     isAddingRow = true;
                     variableRows[index] = variableRows[index]
-                        .copyWith(value: value, enabled: true);
+                        .copyWith(value: cleanValue, enabled: true);
                     variableRows.add(kEnvironmentVariableEmptyModel);
                   } else {
                     variableRows[index] =
-                        variableRows[index].copyWith(value: value);
+                        variableRows[index].copyWith(value: cleanValue);
                   }
                   _onFieldChange(selectedId!);
                 },

@@ -315,3 +315,67 @@ EnvironmentVariableSuggestion getVariableStatus(
       variable: EnvironmentVariableModel(
           key: key, type: EnvironmentVariableType.variable, value: "unknown"));
 }
+
+/// Returns true if the [text] looks like multi-line `.env` content
+/// (i.e. contains at least one newline and at least one `KEY=VALUE` pair).
+bool looksLikeEnvContent(String text) {
+  if (!text.contains('\n') && !text.contains('\r')) return false;
+  final lines = text.split(RegExp(r'\r?\n'));
+  int kvCount = 0;
+  for (final line in lines) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+    final cleaned =
+        trimmed.startsWith('export ') ? trimmed.substring(7).trim() : trimmed;
+    if (cleaned.contains('=')) kvCount++;
+  }
+  return kvCount >= 1;
+}
+
+/// Parses multi-line `.env` formatted content into a list of
+/// [EnvironmentVariableModel].
+///
+/// Supports:
+/// - `KEY=VALUE` pairs (splits only on the first `=`)
+/// - Lines starting with `#` are treated as comments and skipped
+/// - Empty / whitespace-only lines are skipped
+/// - Values wrapped in single or double quotes have the quotes stripped
+/// - `export KEY=VALUE` syntax (the `export` prefix is removed)
+List<EnvironmentVariableModel> parseEnvContent(String content) {
+  final List<EnvironmentVariableModel> result = [];
+  final lines = content.split(RegExp(r'\r?\n'));
+
+  for (final line in lines) {
+    var trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+
+    // Strip optional 'export ' prefix
+    if (trimmed.startsWith('export ')) {
+      trimmed = trimmed.substring(7).trim();
+    }
+
+    final equalsIndex = trimmed.indexOf('=');
+    if (equalsIndex == -1) continue;
+
+    final key = trimmed.substring(0, equalsIndex).trim();
+    var value = trimmed.substring(equalsIndex + 1).trim();
+
+    // Strip surrounding quotes
+    if (value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'")))) {
+      value = value.substring(1, value.length - 1);
+    }
+
+    if (key.isNotEmpty) {
+      result.add(EnvironmentVariableModel(
+        key: key,
+        value: value,
+        type: EnvironmentVariableType.variable,
+        enabled: true,
+      ));
+    }
+  }
+
+  return result;
+}

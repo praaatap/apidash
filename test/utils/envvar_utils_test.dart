@@ -451,4 +451,99 @@ void main() {
       expect(result.authModel?.apikey?.name, "X-API-Key");
     });
   });
+
+  group("Testing looksLikeEnvContent function", () {
+    test("Returns false for single value without newlines", () {
+      expect(looksLikeEnvContent("hello"), false);
+    });
+
+    test("Returns false for empty string", () {
+      expect(looksLikeEnvContent(""), false);
+    });
+
+    test("Returns true for multi-line KEY=VALUE content", () {
+      expect(looksLikeEnvContent('MY_KEY="value1"\nMY_KEY2="value2"'), true);
+    });
+
+    test("Returns true for single KEY=VALUE with trailing newline", () {
+      expect(looksLikeEnvContent('MY_KEY=value\n'), true);
+    });
+
+    test("Returns false for newlines without KEY=VALUE", () {
+      expect(looksLikeEnvContent('hello\nworld\n'), false);
+    });
+  });
+
+  group("Testing parseEnvContent function", () {
+    test("Parses empty string", () {
+      expect(parseEnvContent(""), []);
+    });
+
+    test("Parses single KEY=VALUE line", () {
+      final result = parseEnvContent("MY_KEY=my_value");
+      expect(result.length, 1);
+      expect(result[0].key, "MY_KEY");
+      expect(result[0].value, "my_value");
+      expect(result[0].enabled, true);
+      expect(result[0].type, EnvironmentVariableType.variable);
+    });
+
+    test("Parses multiple KEY=VALUE lines", () {
+      final result =
+          parseEnvContent('API_KEY=abc123\nDB_HOST=localhost\nDB_PORT=5432');
+      expect(result.length, 3);
+      expect(result[0].key, "API_KEY");
+      expect(result[0].value, "abc123");
+      expect(result[1].key, "DB_HOST");
+      expect(result[1].value, "localhost");
+      expect(result[2].key, "DB_PORT");
+      expect(result[2].value, "5432");
+    });
+
+    test("Skips comments and blank lines", () {
+      final result = parseEnvContent(
+          '# This is a comment\nAPI_KEY=abc123\n\n# Another comment\nDB_HOST=localhost');
+      expect(result.length, 2);
+      expect(result[0].key, "API_KEY");
+      expect(result[1].key, "DB_HOST");
+    });
+
+    test("Strips double quotes from values", () {
+      final result = parseEnvContent('MY_KEY="my_value"');
+      expect(result[0].value, "my_value");
+    });
+
+    test("Strips single quotes from values", () {
+      final result = parseEnvContent("MY_KEY='my_value'");
+      expect(result[0].value, "my_value");
+    });
+
+    test("Handles export prefix", () {
+      final result = parseEnvContent('export MY_KEY=my_value');
+      expect(result.length, 1);
+      expect(result[0].key, "MY_KEY");
+      expect(result[0].value, "my_value");
+    });
+
+    test("Handles values containing equals signs", () {
+      final result =
+          parseEnvContent('CONNECTION_STRING=host=localhost;port=5432');
+      expect(result.length, 1);
+      expect(result[0].key, "CONNECTION_STRING");
+      expect(result[0].value, "host=localhost;port=5432");
+    });
+
+    test("Trims whitespace around keys and values", () {
+      final result = parseEnvContent('  MY_KEY  =  my_value  ');
+      expect(result[0].key, "MY_KEY");
+      expect(result[0].value, "my_value");
+    });
+
+    test("Handles Windows-style line endings", () {
+      final result = parseEnvContent('KEY1=val1\r\nKEY2=val2');
+      expect(result.length, 2);
+      expect(result[0].key, "KEY1");
+      expect(result[1].key, "KEY2");
+    });
+  });
 }
