@@ -525,5 +525,12 @@ void main() {
       final result = parseEnvLines("A=1\njust_a_comment\nB=2");
       expect(result.length, 2);
     });
+    
+    test("Skips comment lines starting with #", () {
+      final result = parseEnvLines("A=1\n# this is a comment\nB=2");
+      expect(result.length, 2);
+      expect(result[0].key, "A");
+      expect(result[1].key, "B");
+    });
   });
 }

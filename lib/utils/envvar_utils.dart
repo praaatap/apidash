@@ -332,8 +332,9 @@ EnvironmentVariableSuggestion getVariableStatus(
 List<({String key, String value})> parseEnvLines(String input) {
   final lines = input.split(RegExp(r'[\r\n]+'));
   if (lines.length <= 1) return [];
-  return lines
-      .map((line) => parseEnvLine(line))
-      .whereType<({String key, String value})>()
-      .toList();
+ return lines
+    .where((line) => line.trim().isNotEmpty && !line.trim().startsWith('#'))
+    .map((line) => parseEnvLine(line))
+    .whereType<({String key, String value})>()
+    .toList();
 }
