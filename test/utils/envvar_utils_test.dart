@@ -452,52 +452,46 @@ void main() {
     });
   });
 
-  group("Testing parseEnvLine function", () {
+  group("Testing parseEnvLines function", () {
     test("Parses basic KEY=VALUE", () {
-      final result = parseEnvLine("GOOGLE_API_KEY=your_google_key");
-      expect(result, isNotNull);
-      expect(result!.key, "GOOGLE_API_KEY");
-      expect(result.value, "your_google_key");
+      final result = parseEnvLines("GOOGLE_API_KEY=your_google_key");
+      expect(result.length, 1);
+      expect(result[0].key, "GOOGLE_API_KEY");
+      expect(result[0].value, "your_google_key");
     });
 
     test("Splits on first = only (value contains =)", () {
-      final result = parseEnvLine("TOKEN=abc=def=ghi");
-      expect(result, isNotNull);
-      expect(result!.key, "TOKEN");
-      expect(result.value, "abc=def=ghi");
+      final result = parseEnvLines("TOKEN=abc=def=ghi");
+      expect(result.length, 1);
+      expect(result[0].key, "TOKEN");
+      expect(result[0].value, "abc=def=ghi");
     });
 
-    test("Returns null when no = is present", () {
-      expect(parseEnvLine("MY_VAR"), isNull);
+    test("Returns empty list when no = is present", () {
+      expect(parseEnvLines("MY_VAR"), isEmpty);
     });
 
     test("Handles empty key", () {
-      final result = parseEnvLine("=some_value");
-      expect(result, isNotNull);
-      expect(result!.key, "");
-      expect(result.value, "some_value");
+      final result = parseEnvLines("=some_value");
+      expect(result.length, 1);
+      expect(result[0].key, "");
+      expect(result[0].value, "some_value");
     });
 
     test("Handles empty value", () {
-      final result = parseEnvLine("MY_KEY=");
-      expect(result, isNotNull);
-      expect(result!.key, "MY_KEY");
-      expect(result.value, "");
+      final result = parseEnvLines("MY_KEY=");
+      expect(result.length, 1);
+      expect(result[0].key, "MY_KEY");
+      expect(result[0].value, "");
     });
 
     test("Trims whitespace from key and value", () {
-      final result = parseEnvLine("  MY_KEY  =  my_value  ");
-      expect(result, isNotNull);
-      expect(result!.key, "MY_KEY");
-      expect(result.value, "my_value");
+      final result = parseEnvLines("  MY_KEY  =  my_value  ");
+      expect(result.length, 1);
+      expect(result[0].key, "MY_KEY");
+      expect(result[0].value, "my_value");
     });
 
-    test("Returns null for empty string", () {
-      expect(parseEnvLine(""), isNull);
-    });
-  });
-
-  group("Testing parseEnvLines function", () {
     test("Parses multiple KEY=VALUE lines", () {
       final result =
           parseEnvLines("API_KEY=abc123\nDB_HOST=localhost\nDB_PORT=5432");
@@ -508,10 +502,6 @@ void main() {
       expect(result[1].value, "localhost");
       expect(result[2].key, "DB_PORT");
       expect(result[2].value, "5432");
-    });
-
-    test("Returns empty list for single-line input", () {
-      expect(parseEnvLines("API_KEY=abc123"), isEmpty);
     });
 
     test("Skips blank lines", () {
@@ -525,7 +515,7 @@ void main() {
       final result = parseEnvLines("A=1\njust_a_comment\nB=2");
       expect(result.length, 2);
     });
-    
+
     test("Skips comment lines starting with #", () {
       final result = parseEnvLines("A=1\n# this is a comment\nB=2");
       expect(result.length, 2);

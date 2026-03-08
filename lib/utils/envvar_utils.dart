@@ -316,47 +316,34 @@ EnvironmentVariableSuggestion getVariableStatus(
           key: key, type: EnvironmentVariableType.variable, value: "unknown"));
 }
 
-/// Parse `KEY=VALUE` string into EnvironmentVariableModel.
-EnvironmentVariableModel? parseEnvLine(String input) {
-  var trimmed = input.trim();
-
-  // Skip empty lines and comments
-  if (trimmed.isEmpty || trimmed.startsWith('#')) return null;
-
-  // Strip optional 'export ' prefix
-  if (trimmed.startsWith('export ')) trimmed = trimmed.substring(7).trim();
-
-  final eqIndex = trimmed.indexOf('=');
-  if (eqIndex < 0) return null;
-
-  final key = trimmed.substring(0, eqIndex).trim();
-  if (key.isEmpty) return null;
-
-  var value = trimmed.substring(eqIndex + 1).trim();
-
-  // Strip surrounding quotes
-  if (value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-       (value.startsWith("'") && value.endsWith("'")))) {
-    value = value.substring(1, value.length - 1);
-  }
-
-  return EnvironmentVariableModel(
-    key: key,
-    value: value,
-    type: EnvironmentVariableType.variable,
-    enabled: true,
-  );
-}
-
-
-/// Parses multi-line `KEY=VALUE` text Data cell inputs
-/// Returns a list of parsed (key, value) records, skipping blank lines
-/// and lines without `=`.
+/// Parses multi-line `KEY=VALUE` text Data cell inputs.
+/// Returns a list of [EnvironmentVariableModel], skipping blank lines,
+/// comments, and lines without `=`.
 List<EnvironmentVariableModel> parseEnvLines(String input) {
-  final lines = input.split(RegExp(r'[\r\n]+'));
-  return lines
-      .map((line) => parseEnvLine(line))
+  return input
+      .split(RegExp(r'[\r\n]+'))
+      .map((line) {
+        var trimmed = line.trim();
+        if (trimmed.isEmpty || trimmed.startsWith('#')) return null;
+        if (trimmed.startsWith('export ')) {
+          trimmed = trimmed.substring(7).trim();
+        }
+        final eqIndex = trimmed.indexOf('=');
+        if (eqIndex < 0) return null;
+        final key = trimmed.substring(0, eqIndex).trim();
+        var value = trimmed.substring(eqIndex + 1).trim();
+        if (value.length >= 2 &&
+            ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'")))) {
+          value = value.substring(1, value.length - 1);
+        }
+        return EnvironmentVariableModel(
+          key: key,
+          value: value,
+          type: EnvironmentVariableType.variable,
+          enabled: true,
+        );
+      })
       .whereType<EnvironmentVariableModel>()
       .toList();
 }
