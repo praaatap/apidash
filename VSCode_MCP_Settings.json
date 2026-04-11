@@ -1,0 +1,14 @@
+{
+  "mcp.servers": {
+    "apidash": {
+      "type": "stdio",
+      "command": "apidash",
+      "args": [
+        "mcp"
+      ],
+      "env": {
+        "APIDASH_WORKSPACE_PATH": "d:\\apidash-mcp-workspace"
+      }
+    }
+  }
+}

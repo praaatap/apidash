@@ -1,0 +1,23 @@
+name: apidash_shared_storage
+description: "Shared storage layer for API Dash CLI and MCP using UI-compatible Hive schema"
+version: 0.0.1-dev
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+resolution: workspace
+
+dependencies:
+  better_networking: any
+  curl_parser: any
+  har: any
+  hive: ^2.2.3
+  http: ^1.3.0
+  insomnia_collection: any
+  path: ^1.8.3
+  postman: any
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  test: ^1.29.0

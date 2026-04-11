@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:apidash_core/apidash_core.dart';
 import 'package:apidash_design_system/apidash_design_system.dart';
+import 'package:apidash_shared_storage/apidash_shared_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:stac/stac.dart';
 import 'models/models.dart';
 import 'providers/providers.dart';
@@ -18,6 +22,49 @@ void main() async {
 
   var settingsModel = await getSettingsFromSharedPrefs();
   var onboardingStatus = await getOnboardingStatusFromSharedPrefs();
+
+  if (kIsDesktop && settingsModel?.workspaceFolderPath == null) {
+    final resolvedWorkspacePath = await resolveWorkspacePath();
+    if (resolvedWorkspacePath != null) {
+      final newDir = Directory(resolvedWorkspacePath);
+      if (!newDir.existsSync()) {
+        final homePath = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE']!;
+        final oldWorkspaceDir = Directory(p.join(homePath, 'apidash-workspace'));
+        final docsDir = await getApplicationDocumentsDirectory();
+        
+        Directory? sourceDir;
+        if (oldWorkspaceDir.existsSync() && oldWorkspaceDir.listSync().any((e) => e.path.endsWith('.hive'))) {
+          sourceDir = oldWorkspaceDir;
+        } else if (docsDir.existsSync() && docsDir.listSync().any((e) => e.path.endsWith('.hive'))) {
+        }
+
+        if (sourceDir != null) {
+          try {
+            newDir.createSync(recursive: true);
+            for (final entity in sourceDir.listSync()) {
+              if (entity is File && (entity.path.endsWith('.hive') || entity.path.endsWith('.lock'))) {
+                entity.copySync(p.join(newDir.path, p.basename(entity.path)));
+              }
+            }
+          } catch (e) {
+            debugPrint("Migration failed: $e");
+          }
+        }
+      }
+      settingsModel = (settingsModel ?? const SettingsModel())
+          .copyWithPath(workspaceFolderPath: resolvedWorkspacePath);
+    }
+  }
+
+  if (kIsDesktop && settingsModel?.workspaceFolderPath != null) {
+    final workspacePath = settingsModel!.workspaceFolderPath!;
+    if (workspacePath.trim().isNotEmpty) {
+      await writeGlobalWorkspaceConfig(
+        generateApidashUri(expandPath(workspacePath)),
+      );
+    }
+  }
+
   final initStatus = await initApp(
     kIsDesktop,
     settingsModel: settingsModel,

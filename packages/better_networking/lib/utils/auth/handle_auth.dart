@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:developer' as developer;
 import 'package:better_networking/utils/auth/jwt_auth_utils.dart';
 import 'package:better_networking/utils/auth/digest_auth_utils.dart';
 import 'package:better_networking/better_networking.dart';
 import 'package:better_networking/utils/auth/oauth2_utils.dart';
-import 'package:flutter/foundation.dart';
 
 import 'oauth1_utils.dart';
 
@@ -215,13 +215,20 @@ Future<HttpRequestModel> handleAuth(
             try {
               await server.stop();
             } catch (e) {
-              debugPrint(
-                'Error stopping OAuth callback server (might already be stopped): $e',
+              developer.log(
+                'Error stopping OAuth callback server (might already be stopped)',
+                name: 'apidash.auth',
+                level: 900, // SEVERE
+                error: e,
               );
             }
           }
 
-          debugPrint(res.$1.credentials.accessToken);
+          developer.log(
+            'OAuth2 access token obtained',
+            name: 'apidash.auth',
+            level: 500, // FINE
+          );
 
           // Add the access token to the request headers
           updatedHeaders.add(
@@ -238,7 +245,11 @@ Future<HttpRequestModel> handleAuth(
             oauth2Model: oauth2,
             credentialsFile: credentialsFile,
           );
-          debugPrint(client.credentials.accessToken);
+          developer.log(
+            'OAuth2 client credentials token obtained',
+            name: 'apidash.auth',
+            level: 500,
+          );
 
           // Add the access token to the request headers
           updatedHeaders.add(
@@ -250,12 +261,19 @@ Future<HttpRequestModel> handleAuth(
           updatedHeaderEnabledList.add(true);
           break;
         case OAuth2GrantType.resourceOwnerPassword:
-          debugPrint("==Resource Owner Password==");
+          developer.log(
+            '==Resource Owner Password==',
+            name: 'apidash.auth',
+          );
           final client = await oAuth2ResourceOwnerPasswordGrantHandler(
             oauth2Model: oauth2,
             credentialsFile: credentialsFile,
           );
-          debugPrint(client.credentials.accessToken);
+          developer.log(
+            'OAuth2 resource owner password token obtained',
+            name: 'apidash.auth',
+            level: 500,
+          );
 
           // Add the access token to the request headers
           updatedHeaders.add(

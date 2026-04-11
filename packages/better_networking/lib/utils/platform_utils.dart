@@ -1,5 +1,8 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+
+/// Pure Dart compile-time check for web platform.
+/// Equivalent to Flutter's kIsWeb but without Flutter dependency.
+const bool kIsWeb = bool.fromEnvironment('dart.library.js_interop');
 
 /// Platform detection utilities for the better_networking package.
 class PlatformUtils {

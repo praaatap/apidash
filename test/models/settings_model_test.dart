@@ -19,6 +19,7 @@ void main() {
     workspaceFolderPath: null,
     isSSLDisabled: true,
     isDashBotEnabled: true,
+    isMcpServerEnabled: false,
     defaultAIModel: {"model": "llama"},
   );
 
@@ -39,6 +40,7 @@ void main() {
       "workspaceFolderPath": null,
       "isSSLDisabled": true,
       "isDashBotEnabled": true,
+      "isMcpServerEnabled": false,
       "defaultAIModel": {"model": "llama"}
     };
     expect(sm.toJson(), expectedResult);
@@ -61,6 +63,7 @@ void main() {
       "workspaceFolderPath": null,
       "isSSLDisabled": true,
       "isDashBotEnabled": true,
+      "isMcpServerEnabled": false,
       "defaultAIModel": {"model": "llama"}
     };
     expect(SettingsModel.fromJson(input), sm);
@@ -80,6 +83,7 @@ void main() {
       historyRetentionPeriod: HistoryRetentionPeriod.oneWeek,
       isSSLDisabled: false,
       isDashBotEnabled: false,
+      isMcpServerEnabled: false,
       defaultAIModel: {"model": "llama"},
     );
     expect(
@@ -109,6 +113,7 @@ void main() {
   "workspaceFolderPath": null,
   "isSSLDisabled": true,
   "isDashBotEnabled": true,
+  "isMcpServerEnabled": false,
   "defaultAIModel": {
     "model": "llama"
   }

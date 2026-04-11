@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:better_networking/models/auth/auth_jwt_model.dart';
 import 'package:better_networking/utils/auth/jwt_auth_utils.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';

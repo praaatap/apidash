@@ -1,14 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:apidash_shared_storage/apidash_shared_storage.dart' as shared;
+import 'flutter_storage_adapter.dart';
 
-enum HiveBoxType { normal, lazy }
+// Re-export shared constants for backward compatibility
+const String kDataBox = shared.kDataBox;
+const String kEnvironmentBox = shared.kEnvironmentBox;
+const String kKeyDataBoxIds = shared.kKeyDataBoxIds;
+const String kKeyEnvironmentBoxIds = shared.kKeyEnvironmentBoxIds;
 
-const String kDataBox = "apidash-data";
-const String kKeyDataBoxIds = "ids";
-
-const String kEnvironmentBox = "apidash-environments";
-const String kKeyEnvironmentBoxIds = "environmentIds";
-
+// Flutter-specific box names (not shared with CLI/MCP)
 const String kHistoryMetaBox = "apidash-history-meta";
 const String kHistoryBoxIds = "historyIds";
 const String kHistoryLazyBox = "apidash-history-lazy";
@@ -16,44 +17,51 @@ const String kHistoryLazyBox = "apidash-history-lazy";
 const String kDashBotBox = "apidash-dashbot-data";
 const String kKeyDashBotBoxIds = 'messages';
 
-const kHiveBoxes = [
-  (kDataBox, HiveBoxType.normal),
-  (kEnvironmentBox, HiveBoxType.normal),
-  (kHistoryMetaBox, HiveBoxType.normal),
-  (kHistoryLazyBox, HiveBoxType.lazy),
-  (kDashBotBox, HiveBoxType.lazy),
-];
-
 Future<bool> initHiveBoxes(
   bool initializeUsingPath,
   String? workspaceFolderPath,
 ) async {
   try {
-    if (initializeUsingPath) {
-      if (workspaceFolderPath != null) {
-        Hive.init(workspaceFolderPath);
-      } else {
-        return false;
-      }
-    } else {
-      await Hive.initFlutter();
+    // Use FlutterStorageAdapter which wraps apidash_shared_storage
+    final adapter = FlutterStorageAdapter();
+    final success = await adapter.initialize(
+      initializeUsingPath: initializeUsingPath,
+      workspaceFolderPath: workspaceFolderPath,
+    );
+    
+    if (success) {
+      debugPrint('✅ Storage initialized using apidash_shared_storage');
     }
-    final openHiveBoxesStatus = await openHiveBoxes();
-    return openHiveBoxesStatus;
+    
+    return success;
   } catch (e) {
+    debugPrint('❌ Error initializing storage: $e');
     return false;
   }
 }
 
 Future<bool> openHiveBoxes() async {
   try {
-    for (var box in kHiveBoxes) {
-      if (box.$2 == HiveBoxType.normal) {
-        await Hive.openBox(box.$1);
-      } else if (box.$2 == HiveBoxType.lazy) {
-        await Hive.openLazyBox(box.$1);
-      }
+    // Shared boxes are opened by FlutterStorageAdapter.initialize()
+    // Just verify they're open
+    if (!Hive.isBoxOpen(kDataBox)) {
+      await Hive.openBox(kDataBox);
     }
+    if (!Hive.isBoxOpen(kEnvironmentBox)) {
+      await Hive.openBox(kEnvironmentBox);
+    }
+    
+    // Open Flutter-specific boxes
+    if (!Hive.isBoxOpen(kHistoryMetaBox)) {
+      await Hive.openBox(kHistoryMetaBox);
+    }
+    if (!Hive.isBoxOpen(kHistoryLazyBox)) {
+      await Hive.openLazyBox(kHistoryLazyBox);
+    }
+    if (!Hive.isBoxOpen(kDashBotBox)) {
+      await Hive.openLazyBox(kDashBotBox);
+    }
+    
     return true;
   } catch (e) {
     debugPrint("ERROR OPEN HIVE BOXES: $e");
@@ -63,13 +71,14 @@ Future<bool> openHiveBoxes() async {
 
 Future<void> clearHiveBoxes() async {
   try {
-    for (var box in kHiveBoxes) {
-      if (Hive.isBoxOpen(box.$1)) {
-        if (box.$2 == HiveBoxType.normal) {
-          await Hive.box(box.$1).clear();
-        } else if (box.$2 == HiveBoxType.lazy) {
-          await Hive.lazyBox(box.$1).clear();
-        }
+    for (var box in [kDataBox, kEnvironmentBox, kHistoryMetaBox]) {
+      if (Hive.isBoxOpen(box)) {
+        await Hive.box(box).clear();
+      }
+    }
+    for (var lazyBox in [kHistoryLazyBox, kDashBotBox]) {
+      if (Hive.isBoxOpen(lazyBox)) {
+        await Hive.lazyBox(lazyBox).clear();
       }
     }
   } catch (e) {
@@ -79,13 +88,14 @@ Future<void> clearHiveBoxes() async {
 
 Future<void> deleteHiveBoxes() async {
   try {
-    for (var box in kHiveBoxes) {
-      if (Hive.isBoxOpen(box.$1)) {
-        if (box.$2 == HiveBoxType.normal) {
-          await Hive.box(box.$1).deleteFromDisk();
-        } else if (box.$2 == HiveBoxType.lazy) {
-          await Hive.lazyBox(box.$1).deleteFromDisk();
-        }
+    for (var box in [kDataBox, kEnvironmentBox, kHistoryMetaBox]) {
+      if (Hive.isBoxOpen(box)) {
+        await Hive.box(box).deleteFromDisk();
+      }
+    }
+    for (var lazyBox in [kHistoryLazyBox, kDashBotBox]) {
+      if (Hive.isBoxOpen(lazyBox)) {
+        await Hive.lazyBox(lazyBox).deleteFromDisk();
       }
     }
     await Hive.close();
@@ -102,6 +112,9 @@ class HiveHandler {
   late final Box historyMetaBox;
   late final LazyBox historyLazyBox;
   late final LazyBox dashBotBox;
+  
+  // Shared storage adapter for cross-interface compatibility
+  final FlutterStorageAdapter _adapter = FlutterStorageAdapter();
 
   HiveHandler() {
     debugPrint("Trying to open Hive boxes");
@@ -112,26 +125,65 @@ class HiveHandler {
     dashBotBox = Hive.lazyBox(kDashBotBox);
   }
 
+  // ─────────────────────────────────────────────
+  // Shared Operations (via FlutterStorageAdapter)
+  // ─────────────────────────────────────────────
+
   dynamic getIds() => dataBox.get(kKeyDataBoxIds);
-  Future<void> setIds(List<String>? ids) => dataBox.put(kKeyDataBoxIds, ids);
+  Future<void> setIds(List<String>? ids) async {
+    await dataBox.put(kKeyDataBoxIds, ids);
+  }
 
   dynamic getRequestModel(String id) => dataBox.get(id);
   Future<void> setRequestModel(
-          String id, Map<String, dynamic>? requestModelJson) =>
-      dataBox.put(id, requestModelJson);
+          String id, Map<String, dynamic>? requestModelJson) async {
+    await dataBox.put(id, requestModelJson);
+  }
 
   void delete(String key) => dataBox.delete(key);
 
+  // Environment operations (shared with CLI/MCP)
   dynamic getEnvironmentIds() => environmentBox.get(kKeyEnvironmentBoxIds);
-  Future<void> setEnvironmentIds(List<String>? ids) =>
-      environmentBox.put(kKeyEnvironmentBoxIds, ids);
+  Future<void> setEnvironmentIds(List<String>? ids) async {
+    await environmentBox.put(kKeyEnvironmentBoxIds, ids);
+    // Environments are managed by shared storage
+    // (sync happens via setEnvironment which is called by UI)
+  }
 
   dynamic getEnvironment(String id) => environmentBox.get(id);
   Future<void> setEnvironment(
-          String id, Map<String, dynamic>? environmentJson) =>
-      environmentBox.put(id, environmentJson);
+          String id, Map<String, dynamic>? environmentJson) async {
+    await environmentBox.put(id, environmentJson);
+    // Sync to shared storage
+    try {
+      // Extract variables from environment JSON and sync
+      if (environmentJson != null && environmentJson['values'] is List) {
+        final variables = <String, String>{};
+        for (final value in environmentJson['values'] as List) {
+          if (value is Map && value['enabled'] != false) {
+            variables[value['key'] as String] = value['value'] as String;
+          }
+        }
+        await _adapter.saveEnvironment(id, variables);
+      }
+    } catch (e) {
+      debugPrint('Warning: Could not sync environment: $e');
+    }
+  }
 
-  Future<void> deleteEnvironment(String id) => environmentBox.delete(id);
+  Future<void> deleteEnvironment(String id) async {
+    await environmentBox.delete(id);
+    // Also delete from shared storage
+    try {
+      await _adapter.deleteEnvironment(id);
+    } catch (e) {
+      debugPrint('Warning: Could not delete from shared storage: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Flutter-Specific Operations (History, DashBot)
+  // ─────────────────────────────────────────────
 
   dynamic getHistoryIds() => historyMetaBox.get(kHistoryBoxIds);
   Future<void> setHistoryIds(List<String>? ids) =>

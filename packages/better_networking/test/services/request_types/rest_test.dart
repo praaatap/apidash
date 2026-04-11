@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:developer' as developer;
 import 'package:better_networking/better_networking.dart';
-import 'package:flutter/material.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -180,12 +180,12 @@ void main() {
         ],
       );
       Future.delayed(const Duration(seconds: 2), () {
-        debugPrint("Stream canceled");
+        developer.log("Stream canceled", name: 'apidash.test');
         cancelHttpRequest('get_test_c');
       });
-      debugPrint("Stream start");
+      developer.log("Stream start", name: 'apidash.test');
       final stream = await streamHttpRequest('get_test_c', APIType.rest, model);
-      debugPrint("Stream get output");
+      developer.log("Stream get output", name: 'apidash.test');
       final output = await stream.first;
       final errMsg = output?.$4;
       expect(errMsg, 'Request Cancelled');

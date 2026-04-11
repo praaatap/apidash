@@ -19,6 +19,9 @@ class App extends ConsumerStatefulWidget {
 }
 
 class _AppState extends ConsumerState<App> with WindowListener {
+  bool? _lastMcpEnabled;
+  bool _mcpSyncInProgress = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +38,26 @@ class _AppState extends ConsumerState<App> with WindowListener {
   void _init() async {
     // Add this line to override the default close handler
     await windowManager.setPreventClose(true);
+    final enabled = ref.read(settingsProvider).isMcpServerEnabled;
+    _lastMcpEnabled = enabled;
+    _syncMcpServerWithSetting(enabled);
     setState(() {});
+  }
+
+  Future<void> _syncMcpServerWithSetting(bool enabled) async {
+    if (_mcpSyncInProgress) return;
+    _mcpSyncInProgress = true;
+    try {
+      final notifier = ref.read(mcpServerProvider.notifier);
+      final current = ref.read(mcpServerProvider);
+      if (enabled && !current.isRunning) {
+        await notifier.start();
+      } else if (!enabled && current.isRunning) {
+        await notifier.stop();
+      }
+    } finally {
+      _mcpSyncInProgress = false;
+    }
   }
 
   @override
@@ -100,6 +122,15 @@ class _AppState extends ConsumerState<App> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = ref.watch(
+      settingsProvider.select((value) => value.isMcpServerEnabled),
+    );
+    if (_lastMcpEnabled != enabled) {
+      _lastMcpEnabled = enabled;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _syncMcpServerWithSetting(enabled);
+      });
+    }
     return context.isMediumWindow ? const MobileDashboard() : const Dashboard();
   }
 }

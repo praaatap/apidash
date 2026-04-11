@@ -1,5 +1,4 @@
 import 'package:better_networking/better_networking.dart';
-import 'package:flutter/foundation.dart';
 import 'package:test/test.dart';
 import 'package:http/io_client.dart';
 
@@ -12,10 +11,10 @@ void main() {
     });
 
     test('createHttpClientWithNoSSL: returns an IOClient when not on web', () {
-      if (!kIsWeb) {
-        final client = manager.createClient('req2', noSSL: true);
-        expect(client, isA<IOClient>());
-      }
+      // Note: kIsWeb is now a compile-time constant in better_networking
+      // This test will work in pure Dart environment
+      final client = manager.createClient('req2', noSSL: true);
+      expect(client, isA<IOClient>());
     });
 
     test('should track active client correctly', () {

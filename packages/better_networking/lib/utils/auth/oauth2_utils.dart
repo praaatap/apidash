@@ -1,12 +1,23 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:oauth2/oauth2.dart' as oauth2;
 
 import '../../models/auth/auth_oauth2_model.dart';
 import '../../services/http_client_manager.dart';
 import '../../services/oauth_callback_server.dart';
 import '../platform_utils.dart';
+
+/// Callback function type for OAuth2 authorization code grant.
+/// This allows the Flutter frontend to provide its own OAuth2 browser flow
+/// for mobile platforms while keeping better_networking pure Dart.
+typedef OAuth2AuthorizationCallback = Future<String> Function({
+  required String url,
+  required String callbackUrlScheme,
+});
+
+/// Global callback setter that the Flutter frontend can use to provide
+/// its own OAuth2 authorization implementation.
+OAuth2AuthorizationCallback? oauth2AuthorizationCallback;
 
 /// Advanced OAuth2 authorization code grant handler that returns both the client and server
 /// for cases where you need manual control over the callback server lifecycle.
@@ -22,6 +33,7 @@ Future<(oauth2.Client, OAuthCallbackServer?)> oAuth2AuthorizationCodeGrant({
   required File? credentialsFile,
   String? state,
   String? scope,
+  OAuth2AuthorizationCallback? authorizationCallback,
 }) async {
   // Check for existing credentials first
   if (credentialsFile != null && await credentialsFile.exists()) {
@@ -107,14 +119,18 @@ Future<(oauth2.Client, OAuthCallbackServer?)> oAuth2AuthorizationCodeGrant({
         }
       }
     } else {
-      // For mobile: Use the standard flutter_web_auth_2 approach
-      callbackUri = await FlutterWebAuth2.authenticate(
+      // For mobile: Use the provided callback or the global callback
+      final callback = authorizationCallback ?? oauth2AuthorizationCallback;
+      if (callback == null) {
+        throw Exception(
+          'No OAuth2 authorization callback provided. '
+          'The Flutter frontend must set oauth2AuthorizationCallback before using OAuth2 on mobile.',
+        );
+      }
+
+      callbackUri = await callback(
         url: authorizationUrl.toString(),
         callbackUrlScheme: actualRedirectUrl.scheme,
-        options: const FlutterWebAuth2Options(
-          useWebview: true,
-          windowName: 'OAuth Authorization - API Dash',
-        ),
       );
     }
 

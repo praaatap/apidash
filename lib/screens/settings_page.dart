@@ -1,5 +1,4 @@
 import 'package:apidash_core/apidash_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:apidash_design_system/apidash_design_system.dart';
@@ -17,6 +16,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final clearingData = ref.watch(clearDataStateProvider);
+    final mcpState = ref.watch(mcpServerProvider);
     var sm = ScaffoldMessenger.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,6 +60,165 @@ class SettingsPage extends ConsumerWidget {
                       .read(settingsProvider.notifier)
                       .update(isDashBotEnabled: value);
                 },
+              ),
+              // MCP Server Control Section
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.smart_toy_rounded,
+                            color: mcpState.isRunning
+                                ? Colors.green
+                                : settings.isDark
+                                    ? Colors.grey
+                                    : Colors.grey.shade600,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'APIDash MCP Server',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  mcpState.isRunning
+                                      ? 'Running (PID: ${mcpState.pid})'
+                                      : 'Stopped',
+                                  style: TextStyle(
+                                    color: mcpState.isRunning
+                                        ? Colors.green
+                                        : settings.isDark
+                                            ? Colors.grey
+                                            : Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Status Indicator
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: mcpState.isRunning
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (mcpState.lastError != null &&
+                          mcpState.lastError!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Error: ${mcpState.lastError}',
+                            style: TextStyle(
+                              color: settings.isDark
+                                  ? Colors.orange.shade300
+                                  : Colors.orange.shade800,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: mcpState.isRunning
+                                  ? null
+                                  : () async {
+                                      final success = await ref
+                                          .read(mcpServerProvider.notifier)
+                                          .start();
+                                      if (success) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'MCP Server started successfully!',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        if (context.mounted) {
+                                          final error = ref
+                                              .read(mcpServerProvider)
+                                              .lastError;
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to start MCP Server: $error',
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: const Text('Start MCP Server'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: mcpState.isRunning
+                                  ? () async {
+                                      await ref
+                                          .read(mcpServerProvider.notifier)
+                                          .stop();
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'MCP Server stopped',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.stop_rounded),
+                              label: const Text('Stop'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enable AI assistants (Claude, VS Code Copilot, Cursor) to access your API collections via MCP protocol.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: settings.isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               ADListTile(
                 type: ListTileType.switchOnOff,

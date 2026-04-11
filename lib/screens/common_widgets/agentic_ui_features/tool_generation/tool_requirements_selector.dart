@@ -24,6 +24,7 @@ class _ToolRequirementSelectorPageState
   String agentFramework = 'GEMINI';
 
   Map frameworkMapping = {
+    'APIDASH_CLI_MCP': 'APIDash CLI MCP (Direct)',
     'GEMINI': 'Gemini',
     'OPENAI': 'OpenAI',
     'LANGCHAIN': 'LangChain',

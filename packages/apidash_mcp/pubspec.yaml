@@ -1,0 +1,31 @@
+name: apidash_mcp
+description: "Model Context Protocol server for API Dash - enable AI agents to execute API requests"
+version: 0.0.1-dev
+homepage: https://github.com/foss42/apidash
+
+topics:
+  - api
+  - mcp
+  - ai
+  - http
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+resolution: workspace
+
+executables:
+  apidash_mcp: apidash_mcp
+
+dependencies:
+  args: ^2.5.0
+  apidash_shared_storage: any
+  better_networking: any
+  hive_ce: ^2.3.4
+  http: ^1.6.0
+  mcp_server: ^1.0.0
+  path: ^1.8.3
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  test: ^1.29.0

@@ -1,4 +1,5 @@
 import 'package:apidash_core/apidash_core.dart';
+import 'package:apidash_shared_storage/apidash_shared_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -39,9 +40,10 @@ class ThemeStateNotifier extends StateNotifier<SettingsModel> {
     String? workspaceFolderPath,
     bool? isSSLDisabled,
     bool? isDashBotEnabled,
+    bool? isMcpServerEnabled,
     Map<String, Object?>? defaultAIModel,
   }) async {
-    state = state.copyWith(
+    final nextState = state.copyWith(
       isDark: isDark,
       alwaysShowCollectionPaneScrollbar: alwaysShowCollectionPaneScrollbar,
       size: size,
@@ -55,8 +57,16 @@ class ThemeStateNotifier extends StateNotifier<SettingsModel> {
       workspaceFolderPath: workspaceFolderPath,
       isSSLDisabled: isSSLDisabled,
       isDashBotEnabled: isDashBotEnabled,
+      isMcpServerEnabled: isMcpServerEnabled,
       defaultAIModel: defaultAIModel,
     );
-    await setSettingsToSharedPrefs(state);
+    state = nextState;
+    await setSettingsToSharedPrefs(nextState);
+
+    if (workspaceFolderPath != null && workspaceFolderPath.trim().isNotEmpty) {
+      await writeGlobalWorkspaceConfig(
+        generateApidashUri(expandPath(workspaceFolderPath)),
+      );
+    }
   }
 }
